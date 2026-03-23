@@ -608,7 +608,7 @@ class MainWindow(QMainWindow):
         ]
         dg=QGridLayout(); dg.setSpacing(4)
         for i,(label,kind,bg,tip,fg_k) in enumerate(DISASTERS):
-            dg.addWidget(self._btn(label,lambda k=kind:self._disaster(k),bg,tip=tip,fg_key=fg_k),i//2,i%2)
+            dg.addWidget(self._btn(label,lambda checked=False, k=kind:self._disaster(k),bg,tip=tip,fg_key=fg_k),i//2,i%2)
         cv.addLayout(dg)
 
         # Add / Lore
