@@ -9,6 +9,37 @@ from settings import OL
 from simulation import World, DATA_DIR
 
 
+class NarratorError(Exception):
+    """Any narration failure. Message is shown verbatim in the UI."""
+
+
+# Reasoning-channel close markers seen from gemma-4 family templates
+# (docs/mlx-lm-handover.md §2.3) — keep only text after the LAST one.
+_CHANNEL_MARKERS = ("<|channel|>", "<channel|>")
+_MAX_WORD_RUN = 10   # "own own own …" repetition-loop guard (§3)
+
+
+def check_output(text: str) -> str:
+    """Clean raw model output; raise NarratorError if nothing usable remains."""
+    for marker in _CHANNEL_MARKERS:
+        if marker in text:
+            text = text.rsplit(marker, 1)[-1]
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    if not text:
+        raise NarratorError("(narrator produced no usable text)")
+    words, run = text.split(), 1
+    for prev, cur in zip(words, words[1:]):
+        run = run + 1 if cur == prev else 1
+        if run >= _MAX_WORD_RUN:
+            raise NarratorError("(narrator produced no usable text)")
+    return text
+
+
 class NarrationWorker(QThread):
     done = pyqtSignal(str)
 
