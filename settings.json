@@ -9,6 +9,17 @@
     "auto_advance_sec": 4
   },
 
+  "comfyui": {
+    "_comment":    "Set enabled to false to turn off image generation.",
+    "enabled":     true,
+    "url":         "http://localhost:8188",
+    "checkpoint":  "flux1-schnell.safetensors",
+    "width":       512,
+    "height":      384,
+    "steps":       4,
+    "cfg":         1.0
+  },
+
   "font": {
     "size_ui":    11,
     "size_mono":  10,
