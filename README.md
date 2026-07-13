@@ -1,33 +1,29 @@
 # 🫙 Ecosystem in a Jar
 
 A living simulation with a full dark-themed GUI. Creatures evolve, eat, hunt, and die.
-You intervene with disasters. Ollama narrates. The lore accumulates forever.
+You intervene with disasters. A local AI narrates. The lore accumulates forever.
 
 ---
 
 ## Setup
 
 ```bash
-pip install requests
+pip install PyQt6 requests mlx-lm mlx-vlm
 ```
 
-`tkinter` is included with most Python installs. If missing:
-- **Mac**: `brew install python-tk`
-- **Linux**: `sudo apt install python3-tk`
+Narration runs **in-process on Apple silicon** via
+[mlx-lm](https://github.com/ml-explore/mlx-lm) — no server needed. The model
+(`mlx-community/gemma-4-26B-A4B-it-qat-mxfp8`, ~13 GB) downloads from Hugging
+Face on the first run and stays cached in `~/.cache/huggingface/hub`. While
+the app is open it keeps ~16 GB of unified memory resident.
 
-You also need [Ollama](https://ollama.com) running locally:
-
-```bash
-ollama pull llama3.2
-ollama serve
+Change the model in `settings.json`:
+```json
+"narrator": { "model": "mlx-community/gemma-4-26B-A4B-it-qat-mxfp8" }
 ```
 
-Edit the top of the script to change model:
-```python
-OLLAMA_MODEL = "llama3.2"
-```
-
-Narration won't appear if Ollama isn't running — but the sim runs fine without it.
+Narration shows an error message if the model can't load — but the sim runs
+fine without it.
 
 ---
 
@@ -46,7 +42,7 @@ State saves to `./jar_data/` after every action. Run again to resume.
 ```
 ┌────────────────────┬─────────────────────┬─────────────────────┐
 │  The Jar (canvas)  │  Species Table      │  📽️ Nature Doc     │
-│  creatures as dots │  traits + gen bar   │  (Ollama narration) │
+│  creatures as dots │  traits + gen bar   │  (AI narration)     │
 │  🟢 herbivore      │  Event Log          │  Disaster buttons   │
 │  🔴 carnivore      │  (scrollable)       │  Add Species        │
 └────────────────────┴─────────────────────┴─────────────────────┘
@@ -73,7 +69,7 @@ classic predator collapse. This is intentional. Reintroduce carnivores to experi
 
 | Control | Effect |
 |---|---|
-| ▶ Advance (+10) | Run 10 ticks + Ollama narration |
+| ▶ Advance (+10) | Run 10 ticks + AI narration |
 | ⏸ / ⏹ | Toggle auto-advance every 4s |
 | Fast-forward slider + ⏭ | Skip N ticks silently |
 | ☄️ Meteor | 60% die; plants → 10% |
