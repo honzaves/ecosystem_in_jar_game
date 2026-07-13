@@ -70,3 +70,85 @@ def test_repetition_loop_raises():
 def test_benign_repetition_passes():
     assert narration.check_output("It rains and rains and rains.") \
         == "It rains and rains and rains."
+
+
+# ── generate_narration: thread confinement (handover doc §2.1) ────────────────
+
+@pytest.fixture
+def fresh_runtime(monkeypatch):
+    """Reset the memoized runtime between tests."""
+    monkeypatch.setattr(narration, "_gen_fn", None)
+    return monkeypatch
+
+
+def test_mlx_work_confined_to_one_worker_thread(fresh_runtime):
+    threads = []
+
+    def fake_load_runtime():
+        threads.append(threading.current_thread())
+        def gen(prompt, max_tokens):
+            threads.append(threading.current_thread())
+            return "The jar breathes."
+        return gen
+
+    fresh_runtime.setattr(narration, "_load_runtime", fake_load_runtime)
+    assert narration.generate_narration("a prompt") == "The jar breathes."
+    assert len(set(threads)) == 1                      # load + generate: same thread
+    assert threads[0] is not threading.current_thread()  # …and not the caller's
+    assert threads[0].name.startswith("mlx")
+
+
+def test_concurrent_requests_are_serialized(fresh_runtime):
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    active, peaks = [], []
+
+    def fake_load_runtime():
+        def gen(prompt, max_tokens):
+            active.append(1); peaks.append(len(active))
+            time.sleep(0.05)
+            active.pop()
+            return "ok"
+        return gen
+
+    fresh_runtime.setattr(narration, "_load_runtime", fake_load_runtime)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(narration.generate_narration, "p") for _ in range(2)]
+        assert [f.result() for f in futures] == ["ok", "ok"]
+    assert max(peaks) == 1
+
+
+def test_generate_failure_wrapped_as_narrator_error(fresh_runtime):
+    def fake_load_runtime():
+        raise RuntimeError("metal exploded")
+    fresh_runtime.setattr(narration, "_load_runtime", fake_load_runtime)
+    with pytest.raises(narration.NarratorError):
+        narration.generate_narration("p")
+
+
+def test_generate_output_is_cleaned(fresh_runtime):
+    def fake_load_runtime():
+        return lambda prompt, max_tokens: "<channel|>hmm<channel|>Dust settles."
+    fresh_runtime.setattr(narration, "_load_runtime", fake_load_runtime)
+    assert narration.generate_narration("p") == "Dust settles."
+
+
+# ── _apply_template: enable_thinking fallback (§2.3) ─────────────────────────
+
+def test_template_passes_enable_thinking_false():
+    calls = {}
+    class Tok:
+        def apply_chat_template(self, msgs, add_generation_prompt, tokenize,
+                                enable_thinking):
+            calls.update(msgs=msgs, enable_thinking=enable_thinking)
+            return "TEMPLATED"
+    assert narration._apply_template(Tok(), "hello jar") == "TEMPLATED"
+    assert calls["enable_thinking"] is False
+    assert calls["msgs"] == [{"role": "user", "content": "hello jar"}]
+
+
+def test_template_retries_without_enable_thinking():
+    class Tok:
+        def apply_chat_template(self, msgs, add_generation_prompt, tokenize):
+            return "TEMPLATED-NO-KWARG"
+    assert narration._apply_template(Tok(), "hello") == "TEMPLATED-NO-KWARG"

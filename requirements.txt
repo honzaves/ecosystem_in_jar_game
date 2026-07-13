@@ -1,2 +1,4 @@
 PyQt6>=6.4
 requests>=2.28
+mlx-lm>=0.31
+mlx-vlm>=0.6.1
