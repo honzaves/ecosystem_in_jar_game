@@ -11,10 +11,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QPointF
 from PyQt6.QtGui import QFont, QColor, QPixmap, QTextCursor
 
-from settings import C, F, OL, COMFY
+from settings import C, F, NARR, COMFY
 from ui_utils import mkfont, btn_css
 from simulation import World, Traits, DATA_DIR, CANVAS_W
-from narration import NarrationWorker, append_lore
+from narration import NarrationWorker, append_lore, preload
 from image_gen import ImageGenWorker
 from canvas import JarCanvas
 from species_tree import SpeciesTree
@@ -42,6 +42,7 @@ class MainWindow(QMainWindow):
         self._auto_timer    = QTimer(); self._auto_timer.timeout.connect(self._advance)
         self._anim_timer    = QTimer(); self._anim_timer.timeout.connect(lambda: self.canvas.update())
         self._anim_timer.start(80)
+        preload()   # warm the narrator model in the background (~7s, 13 GB download on first run)
         self._build_ui(); self._apply_style(); self._refresh_all()
         self._log("🫙 New jar." if is_new
                   else f"🫙 Resumed — Year {world.year}, {world.season}, Tick {world.tick}")
@@ -156,10 +157,10 @@ class MainWindow(QMainWindow):
 
         ar = QHBoxLayout(); ar.setSpacing(4)
         self._btn_adv = self._btn("▶  Advance  (+10)", self._advance, "btn_advance",
-                                  tip="Run 10 simulation ticks and request narration from Ollama.")
+                                  tip="Run 10 simulation ticks and request narration from the local model.")
         ar.addWidget(self._btn_adv, stretch=1)
         self._btn_auto = self._btn("⏸", self._toggle_auto, "btn_auto", fg_key="text_button",
-                                   tip=f"Toggle auto-advance (runs every {OL['auto_advance_sec']}s).")
+                                   tip=f"Toggle auto-advance (runs every {NARR['auto_advance_sec']}s).")
         self._btn_auto.setFixedWidth(38); ar.addWidget(self._btn_auto); cv.addLayout(ar)
 
         ff = QHBoxLayout(); ff.setSpacing(6)
@@ -255,7 +256,7 @@ class MainWindow(QMainWindow):
             self._auto_timer.stop(); self._btn_auto.setText("⏸")
             self._btn_auto.setStyleSheet(btn_css(C["btn_auto"])); self._log("Auto paused.")
         else:
-            self._auto_timer.start(OL["auto_advance_sec"] * 1000)
+            self._auto_timer.start(NARR["auto_advance_sec"] * 1000)
             self._btn_auto.setText("⏹")
             self._btn_auto.setStyleSheet(btn_css(C["accent_red"])); self._log("Auto started.")
 

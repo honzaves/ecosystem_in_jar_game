@@ -152,3 +152,40 @@ def test_template_retries_without_enable_thinking():
         def apply_chat_template(self, msgs, add_generation_prompt, tokenize):
             return "TEMPLATED-NO-KWARG"
     assert narration._apply_template(Tok(), "hello") == "TEMPLATED-NO-KWARG"
+
+
+# ── NarrationWorker: same contract as the old HTTP-based worker ──────────────
+
+def _make_world():
+    from simulation import World
+    return World()
+
+
+def test_worker_emits_narration_text(fresh_runtime):
+    fresh_runtime.setattr(narration, "generate_narration",
+                          lambda prompt: "A hush falls over the jar.")
+    worker = narration.NarrationWorker(_make_world(), ["something happened"])
+    worker.done.emit.reset_mock()
+    worker.run()
+    worker.done.emit.assert_called_once_with("A hush falls over the jar.")
+
+
+def test_worker_emits_error_message_instead_of_raising(fresh_runtime):
+    def boom(prompt):
+        raise narration.NarratorError("(model load failed: no metal)")
+    fresh_runtime.setattr(narration, "generate_narration", boom)
+    worker = narration.NarrationWorker(_make_world(), [])
+    worker.done.emit.reset_mock()
+    worker.run()
+    worker.done.emit.assert_called_once_with("(model load failed: no metal)")
+
+
+def test_worker_wraps_unexpected_exceptions(fresh_runtime):
+    def boom(prompt):
+        raise ValueError("surprise")
+    fresh_runtime.setattr(narration, "generate_narration", boom)
+    worker = narration.NarrationWorker(_make_world(), [])
+    worker.done.emit.reset_mock()
+    worker.run()
+    (msg,), _ = worker.done.emit.call_args
+    assert msg.startswith("(narrator error:") and "surprise" in msg

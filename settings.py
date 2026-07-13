@@ -22,11 +22,6 @@ def load_settings() -> dict:
             "model": "mlx-community/gemma-4-26B-A4B-it-qat-mxfp8",
             "max_tokens": 180, "temperature": 0.88, "auto_advance_sec": 4,
         },
-        "ollama": {
-            "model": "gemma3:27b",
-            "url": "http://localhost:11434/api/generate",
-            "max_tokens": 180, "temperature": 0.88, "auto_advance_sec": 4,
-        },
         "comfyui": {
             "url": "http://localhost:8188",
             "checkpoint": "flux1-schnell.safetensors",
@@ -69,6 +64,5 @@ def load_settings() -> dict:
 CFG   = load_settings()
 C     = CFG["colors"]
 F     = CFG["font"]
-OL    = CFG["ollama"]
 NARR  = CFG["narrator"]
 COMFY = CFG["comfyui"]

@@ -4,11 +4,10 @@
 Living simulation · evolving creatures · disasters · AI lore
 
 Requirements:
-    pip install PyQt6 requests
+    pip install PyQt6 requests mlx-lm
 
-Ollama (local AI narrator):
-    ollama pull gemma3:27b
-    ollama serve
+The local AI narrator runs in-process via mlx-lm; the model downloads
+automatically on first run.
 
 Edit settings.json to change colours, fonts, model, and timing.
 State is saved to ./jar_data/ automatically.

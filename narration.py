@@ -1,13 +1,12 @@
-"""Ollama narration worker and lore file persistence."""
+"""mlx-lm narration worker and lore file persistence."""
 
 import json, datetime, sys
 
 from concurrent.futures import ThreadPoolExecutor
 
-import requests
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from settings import OL, NARR
+from settings import NARR
 from simulation import World, DATA_DIR
 
 
@@ -153,16 +152,13 @@ class NarrationWorker(QThread):
             "End on tension or wonder."
         )
         try:
-            r = requests.post(OL["url"], json={
-                "model": OL["model"], "prompt": prompt, "stream": False,
-                "options": {"num_predict": OL["max_tokens"], "temperature": OL["temperature"]},
-            }, timeout=45)
-            if r.status_code == 200: self.done.emit(r.json().get("response", "").strip()); return
-            self.done.emit(f"(Ollama returned {r.status_code})")
-        except requests.exceptions.ConnectionError:
-            self.done.emit("(Ollama not reachable — run: ollama serve)")
+            self.done.emit(generate_narration(prompt))
+        except NarratorError as e:
+            print(f"[narration] {e}", file=sys.stderr)
+            self.done.emit(str(e))
         except Exception as e:
-            self.done.emit(f"(Narrator error: {e})")
+            print(f"[narration] unexpected: {e}", file=sys.stderr)
+            self.done.emit(f"(narrator error: {e})")
 
 
 def append_lore(world: World, narration: str, events: list):
